@@ -3,8 +3,6 @@
 import { Registry } from "./registry";
 import { Tokenizer } from "./tokenizer";
 
-export * from "./type";
-
 export { Registry } from "./registry";
 export { Tokenizer } from "./tokenizer";
 export * from "./tools";
