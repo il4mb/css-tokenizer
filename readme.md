@@ -13,10 +13,10 @@ npm install @il4mb/css-tokenizer
 ## Quick usage
 
 ```ts
-import { tokenize } from "@il4mb/css-tokenizer";
+import { tokenizeImpl } from "@il4mb/css-tokenizer";
 
 const content = "width: 10px";
-const result = tokenize(content);
+const result = tokenizeImpl(content);
 
 // Tuple list entries are [type, start, end]
 console.log(result.toArray());

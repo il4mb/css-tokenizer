@@ -1,57 +1,165 @@
-import { findFunctionEnd, readWhile } from "./tools";
-import { ModelDefinition } from "./type";
-
-const CSS_NAMED_COLORS = [
-    "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure",
-    "beige", "bisque", "black", "blanchedalmond", "blue", "blueviolet",
-    "brown", "burlywood", "cadetblue", "chartreuse", "chocolate",
-    "coral", "cornflowerblue", "cornsilk", "crimson", "cyan",
-    "darkblue", "darkcyan", "darkgoldenrod", "darkgray", "darkgrey",
-    "darkgreen", "darkkhaki", "darkmagenta", "darkolivegreen",
-    "darkorange", "darkorchid", "darkred", "darksalmon", "darkseagreen",
-    "darkslateblue", "darkslategray", "darkslategrey", "darkturquoise",
-    "darkviolet", "deeppink", "deepskyblue", "dimgray", "dimgrey",
-    "dodgerblue", "firebrick", "floralwhite", "forestgreen", "fuchsia",
-    "gainsboro", "ghostwhite", "gold", "goldenrod", "gray", "grey",
-    "green", "greenyellow", "honeydew", "hotpink", "indianred",
-    "indigo", "ivory", "khaki", "lavender", "lavenderblush",
-    "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan",
-    "lightgoldenrodyellow", "lightgray", "lightgrey", "lightgreen",
-    "lightpink", "lightsalmon", "lightseagreen", "lightskyblue",
-    "lightslategray", "lightslategrey", "lightsteelblue", "lightyellow",
-    "lime", "limegreen", "linen", "magenta", "maroon",
-    "mediumaquamarine", "mediumblue", "mediumorchid", "mediumpurple",
-    "mediumseagreen", "mediumslateblue", "mediumspringgreen",
-    "mediumturquoise", "mediumvioletred", "midnightblue", "mintcream",
-    "mistyrose", "moccasin", "navajowhite", "navy", "oldlace",
-    "olive", "olivedrab", "orange", "orangered", "orchid",
-    "palegoldenrod", "palegreen", "paleturquoise", "palevioletred",
-    "papayawhip", "peachpuff", "peru", "pink", "plum", "powderblue",
-    "purple", "rebeccapurple", "red", "rosybrown", "royalblue",
-    "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell",
-    "sienna", "silver", "skyblue", "slateblue", "slategray",
-    "slategrey", "snow", "springgreen", "steelblue", "tan", "teal",
-    "thistle", "tomato", "turquoise", "violet", "wheat", "white",
-    "whitesmoke", "yellow", "yellowgreen", "transparent", "currentcolor",
-];
-
-const COLOR_FUNCTIONS = [
-    /^rgba?\(/i, /^hsla?\(/i, /^hwb\(/i, /^lab\(/i, /^lch\(/i,
-    /^oklab\(/i, /^oklch\(/i, /^color\(/i, /^color-mix\(/i
-];
-
-const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})\b/i;
-
-
+import { COLOR_FUNCTIONS, CSS_NAMED_COLORS, CSS_UNITS, findFunctionEnd, HEX_COLOR, readWhile } from "./tools";
+import { Exp, ModelDefinition } from "./type";
 
 export class Registry implements Iterable<ModelDefinition> {
 
-    private items: ModelDefinition[] = [
+    private readonly items: ModelDefinition[] = [
         {
             type: "symbol",
             kind: "char",
             regex: /[\s\S]/,
             priority: 0
+        },
+        {
+            type: "escape",
+            kind: "class",
+            regex: /^\\[0-9a-f]{1,6}\s?/i,
+            priority: 110,
+            reader({ index, content }) {
+                let nextIndex = index + 1;
+                let count = 0;
+                while (nextIndex < content.length && /[0-9a-f]/i.test(content[nextIndex]) && count < 6) {
+                    nextIndex++;
+                    count++;
+                }
+                // Optional single whitespace after escape
+                if (nextIndex < content.length && /\s/.test(content[nextIndex])) {
+                    nextIndex++;
+                }
+                return [index, nextIndex];
+            }
+        },
+        {
+            type: "unicode-range",
+            kind: "keyword",
+            exp: [/^u\+[0-9a-f?]{1,6}(-[0-9a-f]{1,6})?/i],
+            priority: 110,
+            reader({ index, content, matched }) {
+                const match = matched instanceof RegExp ? matched.exec(content.slice(index)) : null;
+                if (!match) return [index, index + 1];
+                return [index, index + match[0].length];
+            }
+        },
+        {
+            type: "punctuation",
+            kind: "class",
+            regex: /^[{}()\[\],;:.]/,
+            priority: 80,
+            reader({ index, content }) {
+                return [index, index + 1];
+            }
+        },
+        {
+            type: "operator",
+            kind: "class",
+            regex: /^[+\-*/=<>!~^|&]+/,
+            priority: 80,
+            reader({ index, content }) {
+                let nextIndex = index;
+                while (nextIndex < content.length && /[+\-*/=<>!~^|&]/.test(content[nextIndex])) {
+                    nextIndex++;
+                }
+                return [index, nextIndex];
+            }
+        },
+        {
+            type: "variable",
+            kind: "keyword",
+            exp: [/^--[a-zA-Z0-9-_]+/],
+            priority: 110,
+            reader({ index, content, matched }) {
+                const match = matched instanceof RegExp ? matched.exec(content.slice(index)) : null;
+                if (!match) return [index, index + 1];
+                return [index, index + match[0].length];
+            }
+        },
+        {
+            type: "comment",
+            kind: "class",
+            regex: /^\/\*/,
+            priority: 90,
+            reader({ index, content }) {
+                let nextIndex = index + 2;
+                while (nextIndex < content.length && !(content[nextIndex] === '*' && content[nextIndex + 1] === '/')) {
+                    nextIndex++;
+                }
+                // Include the closing */
+                if (nextIndex < content.length) nextIndex += 2;
+                return [index, nextIndex];
+            }
+        },
+        {
+            type: "whitespace",
+            kind: "class",
+            regex: /^\s+/,
+            priority: 90,
+            reader({ index, content }) {
+                let nextIndex = index;
+                while (nextIndex < content.length && /\s/.test(content[nextIndex])) {
+                    nextIndex++;
+                }
+                return [index, nextIndex];
+            }
+        },
+        {
+            type: "url",
+            kind: "class",
+            regex: /^\"https?:\/\/[^\"]+/i,
+            priority: 50,
+            reader({ index, content }) {
+                let nextIndex = index + 1;
+                while (nextIndex < content.length && content[nextIndex] !== '"') {
+                    nextIndex++;
+                }
+                if (nextIndex < content.length && content[nextIndex] === '"') {
+                    nextIndex++;
+                }
+
+                return [index, nextIndex];
+            }
+        },
+        {
+            type: "string",
+            kind: "class",
+            regex: /^\"[^\"]*\"|^\'[^\']*\'/,
+            priority: 20,
+            reader({ index, content }) {
+                const quoteChar = content[index];
+                let nextIndex = index + 1;
+                while (nextIndex < content.length && content[nextIndex] !== quoteChar) {
+                    nextIndex++;
+                }
+                if (nextIndex < content.length && content[nextIndex] === quoteChar) {
+                    nextIndex++;
+                }
+
+                return [index, nextIndex];
+            }
+        },
+        {
+            type: "atrule",
+            kind: "keyword",
+            exp: [/^@[a-z]+/i],
+            priority: 100,
+            reader({ index, content, deepReader }) {
+                const match = /^@[\w-]+/.exec(content.slice(index));
+                if (!match) return [index, index + 1];
+                const value = match[0];
+                const nextIndex = index + value.length;
+                return deepReader([index, nextIndex]);
+            }
+        },
+        {
+            type: "function",
+            kind: "keyword",
+            exp: [/^[a-z][a-z0-9-]*\(/i],
+            priority: 150,
+            reader({ index, content, deepReader }) {
+                const match = /^[a-z][a-z0-9-]*\(/i.exec(content.slice(index));
+                if (!match) return [index, index + 1];
+                const end = findFunctionEnd(content, index);
+                return deepReader([index, end]);
+            }
         },
         {
             type: "dimension",
@@ -83,6 +191,17 @@ export class Registry implements Iterable<ModelDefinition> {
                     nextIndex++;
                 }
                 return [index, nextIndex];
+            }
+        },
+        {
+            type: "unit",
+            kind: "keyword",
+            exp: CSS_UNITS.map(unit => new RegExp(`^${unit}\\b`, "i")),
+            priority: 10,
+            reader({ index, content, matched }) {
+                const match = matched instanceof RegExp ? matched.exec(content.slice(index)) : null;
+                if (!match) return [index, index + 1];
+                return [index, index + match[0].length];
             }
         },
         {
@@ -120,10 +239,7 @@ export class Registry implements Iterable<ModelDefinition> {
                     const value = match[0];
                     if (value.endsWith('(')) {
                         const end = findFunctionEnd(content, index);
-                        const fnName = value.slice(0, -1);
-                        const innerStart = index + value.length;
-                        const innerEnd = Math.max(innerStart, end);
-                        return deepReader([index, end]);
+                        return deepReader([index, end], index + value.length - 1);
                     }
                 }
                 const nextIndex = readWhile(content, index + 1, /[a-zA-Z0-9_-]/);
@@ -137,6 +253,10 @@ export class Registry implements Iterable<ModelDefinition> {
         this.sort();
     }
 
+    all() {
+        return [...this.items];
+    }
+    
     add(def: ModelDefinition) {
         this.items.push({ priority: 0, ...def });
         this.sort();

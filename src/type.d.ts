@@ -1,7 +1,7 @@
 export type ReaderContext = {
     content: string;
     index: number;
-    deepReader: (ranges: TRange) => Tuple[]
+    deepReader: (ranges: TRange, startAt?: number) => Tuple[]
 }
 
 
@@ -33,3 +33,18 @@ export type ModelDefinition<T extends Model = Model> = {
     type: string;
     priority?: number;
 } & T;
+
+export type Token = {
+    type: string;
+    start: number;
+    end: number;
+    value: string;
+}
+
+export type TokenTree = Token & {
+    children?: TokenTree[]
+}
+
+export type Exp = string | RegExp;
+export type Tuple = [type: number, start: number, end: number];
+export type TRange = [start: number, end: number];

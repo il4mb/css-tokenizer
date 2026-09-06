@@ -1,12 +1,5 @@
 import { Registry } from "./registry";
-
-export type TokenTree = {
-    type: string;
-    start: number;
-    end: number
-    value: string;
-    children?: TokenTree[]
-}
+import { Token, TokenTree, Tuple } from "./type";
 
 export class TupleList {
     protected items: Tuple[] = [];
@@ -23,7 +16,7 @@ export class TupleList {
         return [...this.items];
     }
 
-    toTokenList(content: string): TokenTree[] {
+    toTokenList(content: string): Token[] {
         return this.items.map(([type, start, end]) => {
             const model = this.registry.get(type);
             return {
@@ -50,7 +43,6 @@ export class TupleList {
 
         for (const token of tokens) {
             /*
-             * FIXED: Robust parent exit check. 
              * Pop parents whose physical range strictly ends before or exactly where the new token starts.
              * (e.g. `parent.end <= token.start`)
              */

@@ -17,7 +17,7 @@ registry.add({
 const tokenizer = new Tokenizer(registry);
 
 
-const content = `--primary`;
+const content = `.class { color: rgb(255, 0, 0); --my-var: 10px; }`;
 const result = tokenizer.tokenize(content);
 
 console.log(result.toArray()); 

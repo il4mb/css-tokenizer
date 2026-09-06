@@ -1,6 +1,6 @@
 import { Registry } from "./registry";
 import { TupleList } from "./tupleList";
-import { ModelDefinition } from "./type";
+import { Exp, ModelDefinition, TRange, Tuple } from "./type";
 
 export class Tokenizer {
 
@@ -14,12 +14,12 @@ export class Tokenizer {
                 return [[type, index, index + 1]];
             }
 
-            const deepReader = (range: TRange): Tuple[] => {
+            const deepReader = (range: TRange, startAt?: number): Tuple[] => {
                 const tuples: Tuple[] = [[type, range[0], range[1]]];
-                const rangeContent = content.slice(range[0], range[1]);
+                const rangeContent = content.slice(startAt ?? range[0], range[1]);
                 const others = this.tokenize(rangeContent, { ignoreTypes: [type] })
                     .toArray()
-                    .map(([type, start, end]) => [type, start + range[0], end + range[0]] as Tuple);
+                    .map(([type, start, end]) => [type, start + (startAt ?? range[0]), end + (startAt ?? range[0])] as Tuple);
 
                 tuples.push(...others);
                 return tuples;

@@ -1,6 +1,6 @@
 {
     "name": "@il4mb/css-tokenizer",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Modular, extensible CSS tokenizer for parsing CSS-like strings into tuple lists and token trees.",
     "keywords": [
         "css",
