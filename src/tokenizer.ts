@@ -122,7 +122,7 @@ export class Tokenizer {
                 if (results && results.length > 0) {
                     const nextIndex = Math.max(i, ...results.map(tuple => tuple[2]));
                     if (nextIndex <= i) {
-                        tupleList.push([-1, i, i + 1]);
+                        tupleList.push(['unknown', i, i + 1]);
                         i++;
                         continue;
                     }
@@ -133,7 +133,7 @@ export class Tokenizer {
                 }
             }
 
-            tupleList.push([-1, i, i + 1]);
+            tupleList.push(['unknown', i, i + 1]);
             i++;
         }
         tupleList.sort();
