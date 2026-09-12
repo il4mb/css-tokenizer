@@ -1,12 +1,12 @@
 import { Registry } from "./registry";
-import { Token, TokenTree, Tuple } from "./type";
+import { PlainToken, IToken } from "./type";
 
 export class TupleList {
-    protected items: Tuple[] = [];
 
-    constructor(protected registry: Registry) { }
 
-    push(...items: Tuple[]) {
+    constructor(protected registry: Registry, protected items: IToken[] = []) { }
+
+    push(...items: IToken[]) {
         items.forEach(item => {
             this.items.push(item);
         });
@@ -16,50 +16,28 @@ export class TupleList {
         return [...this.items];
     }
 
-    toTokenList(content: string): Token[] {
-        return this.items.map(([type, start, end]) => {
-            const model = this.registry.get(type);
+    sort() {
+        this.items.sort((a, b) => a[1] !== b[1] ? a[1] - b[1] : b[2] - a[2]);
+    }
+
+    toPlainList(content: string): PlainToken[] {
+        return this.toArray().map(([type, start, end]) => {
             return {
-                type: model?.type ?? "unknown",
+                type,
                 start,
                 end,
                 value: content.slice(start, end),
-            };
+            } as PlainToken
         });
     }
 
-    toTokenTree(content: string): TokenTree[] {
-        const tokens = this.toTokenList(content);
-        
-        tokens.sort((a, b) => {
-            if (a.start !== b.start) {
-                return a.start - b.start;
-            }
-            return b.end - a.end;
-        });
+    // toTokenList(content: string): TokenList {
+    //     this.sort();
+    //     const plainList = this.toPlainList(content);
+    //     return new TokenList(plainList);
+    // }
 
-        const roots: TokenTree[] = [];
-        const stack: TokenTree[] = [];
-
-        for (const token of tokens) {
-            /*
-             * Pop parents whose physical range strictly ends before or exactly where the new token starts.
-             * (e.g. `parent.end <= token.start`)
-             */
-            while (stack.length > 0 && stack[stack.length - 1].end <= token.start) {
-                stack.pop();
-            }
-            const parent = stack[stack.length - 1];
-
-            if (parent) {
-                if (!parent.children) parent.children = [];
-                parent.children.push(token);
-            } else {
-                roots.push(token);
-            }
-            stack.push(token);
-        }
-
-        return roots;
+    toJSON() {
+        return [...this.items]
     }
 }

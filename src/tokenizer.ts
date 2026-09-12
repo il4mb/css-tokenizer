@@ -1,37 +1,43 @@
 import { Registry } from "./registry";
-import { TupleList } from "./tupleList";
-import { Exp, ModelDefinition, TRange, Tuple } from "./type";
+import { IExp, ModelDefinition, IRange, IToken } from "./type";
 
 export class Tokenizer {
 
     constructor(public registry: Registry) { }
 
-    getReader(def: ModelDefinition, match?: Exp) {
-        const type = this.registry.indexOf(def);
-        return ((content: string, index: number): Tuple[] => {
+    getReader(def: ModelDefinition, match?: IExp) {
+        const type = def.type;
+        return ((content: string, index: number): IToken[] => {
             if (def.kind === "char") {
                 // char only single character so just + 1 for nextIndex
                 return [[type, index, index + 1]];
             }
 
-            const deepReader = (range: TRange, startAt?: number): Tuple[] => {
-                const tuples: Tuple[] = [[type, range[0], range[1]]];
-                const rangeContent = content.slice(startAt ?? range[0], range[1]);
-                const others = this.tokenize(rangeContent, { ignoreTypes: [type] })
-                    .toArray()
-                    .map(([type, start, end]) => [type, start + (startAt ?? range[0]), end + (startAt ?? range[0])] as Tuple);
+            const createTuple = (range: IRange, value?: string): IToken => {
+                const contentValue = value ?? content.slice(range[0], range[1]);
+                const hit = this.findMatch(contentValue, range[0]);
+                return [hit?.[0] ?? 'unknown', range[0], range[1]];
+            }
+
+            const deepReader = (ranges: IRange | IRange[], startAt?: number): IToken[] => {
+                const tuples: IToken[] = this.isRange(ranges) ? [[type, ...ranges]] : ranges.map<IToken>((r, i) => (i === 0 ? [type, r[0], r[1]] : r.length == 2 ? createTuple(r) : r) as IToken);
+                const firstRange = tuples[0];
+                const startRange = startAt ?? firstRange[1];
+                const rangeContent = content.slice(startRange, firstRange[2]);
+                const others = this.tokenize(rangeContent, { ignoreTypes: [type] }).map(([type, start, end]) => [type, start + startRange, end + startRange] as IToken);
 
                 tuples.push(...others);
                 return tuples;
             }
 
+
             if (def.kind === "class") {
                 if ('reader' in def && def.reader) {
-                    let ranges = def.reader({ content, index, deepReader });
-                    if (ranges.length > 0 && Array.isArray(ranges[0])) {
-                        return ranges.map((range: any) => range.length === 2 ? [type, ...range] : range) as Tuple[];
+                    const ranges = def.reader({ content, index, deepReader, createTuple });
+                    if (this.isRange(ranges)) {
+                        return [[type, ranges[0], ranges[1]]];
                     }
-                    return [[type, ...(ranges as TRange)]];
+                    return ranges.map((range: any) => range.length === 2 ? [type, range[0], range[1]] : range) as IToken[];
                 }
 
                 const start = index;
@@ -56,23 +62,23 @@ export class Tokenizer {
                 return [[type, index, index + length]];
             }
 
-            const ranges = def.reader({ content, index, matched: match, deepReader });
-            if (ranges.length > 0 && Array.isArray(ranges[0])) {
-                return ranges.map((range: any) => range.length === 2 ? [type, ...range] : range) as Tuple[];
+            const ranges = def.reader({ content, index, matched: match, deepReader, createTuple });
+            if (this.isRange(ranges)) {
+                return [[type, ranges[0], ranges[1]]];
             }
-            return [[type, ...(ranges as TRange)]];
+            return ranges.map((range: any) => range.length === 2 ? [type, range[0], range[1]] : range) as IToken[];
         });
     }
 
-    findMatch(content: string, index: number, ignoreTypes?: number[]): [number, (c: string, i: number) => Tuple[]] | undefined {
-        for (let i = 0; i < this.registry.length; i++) {
+    findMatch(content: string, index: number, ignoreTypes?: string[]): [string, (c: string, i: number) => IToken[]] | undefined {
+        for (const def of this.registry) {
             // Bypass ignored rules so fallback tokens get a chance
-            if (ignoreTypes && ignoreTypes.includes(i)) {
+            if (ignoreTypes && ignoreTypes.includes(def.type)) {
                 continue;
             }
 
-            const match = this.tryMatch(this.registry.get(i), content, index);
-            if (match) return [i, match];
+            const match = this.tryMatch(def, content, index);
+            if (match) return [def.type, match];
         }
         return undefined;
     }
@@ -105,8 +111,8 @@ export class Tokenizer {
         return false;
     }
 
-    tokenize(content: string, options?: { ignoreTypes?: number[] }) {
-        const tupleList = new TupleList(this.registry);
+    tokenize(content: string, options?: { ignoreTypes?: string[] }): IToken[] {
+        const tupleList = [];
         let i = 0;
 
         while (i < content.length) {
@@ -130,15 +136,15 @@ export class Tokenizer {
             tupleList.push([-1, i, i + 1]);
             i++;
         }
-
+        tupleList.sort();
         return tupleList;
     }
 
-    isRange(data: any): data is TRange {
+    isRange(data: any): data is IRange {
         return Array.isArray(data) && data.length === 2 && data.every(t => typeof t === "number");
     }
 
-    isTuple(data: any): data is Tuple {
-        return Array.isArray(data) && data.length === 3 && data.every(t => typeof t === "number");
+    isTuple(data: any): data is IToken {
+        return Array.isArray(data) && data.length === 3 && data.every((t, i) => typeof t === (i === 0 ? "string" : "number"));
     }
 }

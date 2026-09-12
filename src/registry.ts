@@ -1,5 +1,5 @@
 import { COLOR_FUNCTIONS, CSS_NAMED_COLORS, CSS_UNITS, findFunctionEnd, HEX_COLOR, readWhile } from "./tools";
-import { Exp, ModelDefinition } from "./type";
+import { IExp, ModelDefinition } from "./type";
 
 export class Registry implements Iterable<ModelDefinition> {
 
@@ -239,7 +239,13 @@ export class Registry implements Iterable<ModelDefinition> {
                     const value = match[0];
                     if (value.endsWith('(')) {
                         const end = findFunctionEnd(content, index);
-                        return deepReader([index, end], index + value.length - 1);
+                        return deepReader(
+                            [
+                                [index, end],
+                                [index, index + value.length - 1]
+                            ],
+                            index + value.length - 1
+                        );
                     }
                 }
                 const nextIndex = readWhile(content, index + 1, /[a-zA-Z0-9_-]/);
@@ -256,7 +262,7 @@ export class Registry implements Iterable<ModelDefinition> {
     all() {
         return [...this.items];
     }
-    
+
     add(def: ModelDefinition) {
         this.items.push({ priority: 0, ...def });
         this.sort();
@@ -274,6 +280,11 @@ export class Registry implements Iterable<ModelDefinition> {
         return this.items[Symbol.iterator]();
     }
 
+    indexOfType(type: string) {
+        const def = this.items.find(d => d.type === type);
+        if (def) return this.indexOf(def);
+        return -1;
+    }
     indexOf(item: ModelDefinition) {
         return this.items.indexOf(item);
     }
@@ -282,7 +293,7 @@ export class Registry implements Iterable<ModelDefinition> {
         this.items.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
     }
 
-    sortExps(exps: Exp[]): Exp[] {
+    sortExps(exps: IExp[]): IExp[] {
         return [...exps].sort((a, b) => {
             const aIsRegex = a instanceof RegExp;
             const bIsRegex = b instanceof RegExp;

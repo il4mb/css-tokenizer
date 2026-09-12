@@ -1,9 +1,9 @@
 export type ReaderContext = {
     content: string;
     index: number;
-    deepReader: (ranges: TRange, startAt?: number) => Tuple[]
+    deepReader: (ranges: IRange | IRange[], startAt?: number) => IToken[];
+    createTuple: (ranges: IRange) => IToken;
 }
-
 
 
 export interface CharModel {
@@ -17,14 +17,14 @@ export interface CharRegexModel {
 
 export interface KeywordModel {
     kind: "keyword";
-    exp: Exp[];
-    reader: (ctx: ReaderContext & { matched: Exp }) => TRange[] | TRange | Tuple[];
+    exp: IExp[];
+    reader: (ctx: ReaderContext & { matched: IExp }) => IRange[] | IRange | IToken[];
 }
 
 export interface ClassModel {
     kind: "class";
     regex: RegExp;
-    reader?: (ctx: ReaderContext) => TRange[] | TRange | Tuple[];
+    reader?: (ctx: ReaderContext) => IRange[] | IRange | IToken[];
 }
 
 export type Model = CharModel | CharRegexModel | KeywordModel | ClassModel;
@@ -34,17 +34,17 @@ export type ModelDefinition<T extends Model = Model> = {
     priority?: number;
 } & T;
 
-export type Token = {
+export type PlainToken = {
     type: string;
     start: number;
     end: number;
     value: string;
 }
 
-export type TokenTree = Token & {
+export type TokenTree = PlainToken & {
     children?: TokenTree[]
 }
 
-export type Exp = string | RegExp;
-export type Tuple = [type: number, start: number, end: number];
-export type TRange = [start: number, end: number];
+export type IExp = string | RegExp;
+export type IRange = [start: number, end: number];
+export type IToken = [type: string, ...IRange];

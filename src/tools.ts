@@ -1,3 +1,5 @@
+import { IToken } from "./type";
+
 export const CSS_NAMED_COLORS = [
     "aliceblue", "antiquewhite", "aqua", "aquamarine", "azure",
     "beige", "bisque", "black", "blanchedalmond", "blue", "blueviolet",
@@ -101,3 +103,6 @@ export const readWhile = (content: string, index: number, test: RegExp) => {
     while (nextIndex < content.length && test.test(content[nextIndex])) nextIndex++;
     return nextIndex;
 }
+
+
+export const sortTuples = (tuples: IToken[]) => tuples.sort((a, b) => a[1] !== b[1] ? a[1] - b[1] : b[2] - a[2]);

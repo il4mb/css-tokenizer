@@ -1,6 +1,6 @@
 {
     "name": "@il4mb/css-tokenizer",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Modular, extensible CSS tokenizer for parsing CSS-like strings into tuple lists and token trees.",
     "keywords": [
         "css",
@@ -28,8 +28,8 @@
     "scripts": {
         "test": "vitest index.test.ts",
         "build:types": "npx tsc --build tsconfig.build.json",
-        "build": "bun build ./src/index.ts --outdir ./dist --minify --format esm",
-        "prepublishOnly": "npm run build"
+        "build:js": "bun build ./src/index.ts --outdir ./dist --minify --format esm",
+        "build": "bun run build:types && bun run build:js"
     },
     "devDependencies": {
         "@types/node": "^26.4.1",
