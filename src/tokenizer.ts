@@ -1,4 +1,5 @@
 import { Registry } from "./registry";
+import { sortTuples } from "./tools";
 import { IExp, ModelDefinition, IRange, IToken } from "./type";
 
 export class Tokenizer {
@@ -70,7 +71,8 @@ export class Tokenizer {
         });
     }
 
-    findMatch(content: string, index: number, ignoreTypes?: string[]): [string, (c: string, i: number) => IToken[]] | undefined {
+
+    findMatch(content: string, index: number, ignoreTypes?: string[]): [type: string, reader: (c: string, i: number) => IToken[]] | undefined {
         for (const def of this.registry) {
             // Bypass ignored rules so fallback tokens get a chance
             if (ignoreTypes && ignoreTypes.includes(def.type)) {
@@ -136,7 +138,7 @@ export class Tokenizer {
             tupleList.push(['unknown', i, i + 1]);
             i++;
         }
-        tupleList.sort();
+        sortTuples(tupleList);
         return tupleList;
     }
 
