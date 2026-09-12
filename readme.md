@@ -19,27 +19,7 @@ const content = "width: 10px";
 const result = tokenizeImpl(content);
 
 // Tuple list entries are [type, start, end]
-console.log(result.toArray());
-
-// Convert tuples to a structured token tree (useful for walking semantic tokens)
-console.log(JSON.stringify(result.toTokenTree(content), null, 2));
-```
-
-Example token tree (for the value `10px`):
-
-```json
-[
-    {
-        "type": "dimension",
-        "start": 7,
-        "end": 11,
-        "value": "10px",
-        "children": [
-            { "type": "number", "start": 7, "end": 9, "value": "10" },
-            { "type": "word", "start": 9, "end": 11, "value": "px" }
-        ]
-    }
-]
+console.log(result);
 ```
 
 ## Custom token types
@@ -67,8 +47,7 @@ const tokenizer = new Tokenizer(registry);
 const content = `--primary`;
 const result = tokenizer.tokenize(content);
 
-console.log(result.toArray());
-console.log(JSON.stringify(result.toTokenTree(content), null, 2));
+console.log(result);
 ```
 
 ## API (high level)
